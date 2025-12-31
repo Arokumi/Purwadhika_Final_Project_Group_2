@@ -1,0 +1,33 @@
+Notes for what st.session_state holds:
+
+"user_summary": str
+"best_jobs": [dict]
+"session_id": str
+"assessment: str
+"analysis_done": bool
+
+
+
+Notes for what best_jobs look like:
+
+Job = {
+    'work_type': metadata["work_type"],
+    'location': metadata["location"],
+    'salary': metadata["salary"],
+    'company_name': metadata["company_name"],
+    'job_title': metadata["job_title"],
+    'job_desc': job_desc,
+    'job_id': metadata['_id']
+}
+
+
+Notes for what a Job record in QDrant looks like:
+class Document(
+    page_content = str,
+    metadata = {
+        "cv_contents": str,
+        "created": int,
+        "session_id": str
+    },
+    id = str
+)
