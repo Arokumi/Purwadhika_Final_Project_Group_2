@@ -10,25 +10,18 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 import streamlit as st
-from data.global_state import state as global_state, save_state
-from typing_extensions import TypedDict
-from agents.document_agent import analysis_compile
+import requests
+import base64
+from streamlit.runtime.scriptrunner import get_script_run_ctx
 
-
-# TypedDict definition of State
-class State(TypedDict):
-    summary: str
-    cv_contents: str
-    best_jobs: list[dict]
-    file_bytes: bytes
-    session_id: int
-    assessment: str
 
 # ======================================================= Internal Variables =======================================================
 
 DB_FILE = "user_data.json"
 
-MBTI = "ENTP-T"
+DB_FILE = "user_data.json"
+
+MBTI = "ENTP-T" # Example
 
 ASSESSMENT = (
     "You are an ENTP-T. Your personality type is characterized by a natural curiosity "
@@ -36,7 +29,7 @@ ASSESSMENT = (
     "that challenge your intellect and allow you to express your creativity. "
     "Your enthusiasm and quick wit make you a natural leader, easily able to inspire "
     "and motivate others."
-)
+) # Example
 
 # Dummy job data
 DUMMY_JOBS = [
@@ -46,7 +39,7 @@ DUMMY_JOBS = [
         "work_type": "Hybrid",
         "salary": "IDR 15–25M",
         "location": "Jakarta",
-        "description": (
+        "job_desc": (
             "Lead cross-functional teams to build impactful products. "
             "You will define product vision, work with engineering, "
             "and drive execution from ideation to launch."
@@ -58,7 +51,7 @@ DUMMY_JOBS = [
         "work_type": "On-site",
         "salary": "IDR 20–30M",
         "location": "Jakarta",
-        "description": (
+        "job_desc": (
             "Work with enterprise clients to design AI-driven solutions. "
             "Translate business problems into technical architectures "
             "and guide implementation strategies."
@@ -69,10 +62,19 @@ DUMMY_JOBS = [
 
 # ======================================================= Helper Functions =======================================================
 
+
 def truncate_text(text, max_chars=220):
     if len(text) <= max_chars:
         return text, False
     return text[:max_chars].rsplit(" ", 1)[0] + "...", True
+
+
+def get_session_id():
+    "Retrieves the unique session ID for the current user's browser tab."
+    ctx = get_script_run_ctx()
+    if ctx is None:
+        raise Exception("Failed to get the script run context")
+    return ctx.session_id
 
 
 # ======================================================= Streamlit UI =======================================================
@@ -175,10 +177,17 @@ st.markdown(
         line-height: 1.6;
         margin-top: 10px;
     }
+
+    .bottom-right-button {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 9999;
+    }
     </style>
     """,
     unsafe_allow_html=True
-    )
+)
 
 # Upload CV
 uploaded_file = st.file_uploader(
@@ -187,39 +196,49 @@ uploaded_file = st.file_uploader(
     label_visibility="collapsed",
 )
 
-# STOP rendering until upload happens
-if not uploaded_file:
+# Cache uploaded file in session state
+if uploaded_file and "file_cached" not in st.session_state:
+    st.session_state["file_cached"] = uploaded_file.getvalue()
+
+# If cache is not detected, stop the rest of the program from running.
+if "file_cached" not in st.session_state:
     st.stop()
 
 # If user uploads CV
-if uploaded_file is not None:
-    file_as_bytes = uploaded_file.getvalue()
+if "analysis_done" not in st.session_state:
+    file_as_bytes = st.session_state["file_cached"]
 
-    initial_state: State = {
-    "summary": "",
-    "user_name": "",
-    "cv_contents": "",
-    "best_jobs": [],
-    "file_bytes": file_as_bytes,
-    "session_id": 1,
-    "assessment": ""
+    initial_state = {
+        "summary": "",
+        "user_name": "",
+        "cv_contents": "",
+        "best_jobs": [],
+        "file_bytes": base64.b64encode(file_as_bytes).decode("utf-8"),
+        "session_id": get_session_id(),
+        "assessment": ""
     }
 
-    request = analysis_compile(initial_state)
+    request = requests.post(
+        "http://localhost:8000/analyze-cv",
+        json=initial_state
+    )
 
-    # Update global state values
-    global_state["user_summary"] = request["summary"]
-    global_state["user_name"] = request["user_name"]
-    global_state["session_id"] = request["session_id"]
-    global_state["assessment"] = request["assessment"]
+    data = request.json()
 
-    save_state()
+    # Update session state values
+    st.session_state["user_summary"] = data["summary"]
+    st.session_state["user_name"] = data["user_name"]
+    st.session_state["best_jobs"] = data["best_jobs"]
+    st.session_state["session_id"] = data["session_id"]
+    st.session_state["assessment"] = data["assessment"]
+    st.session_state["analysis_done"] = True
 
-    MBTI = global_state["assessment"][0:7]
-    ASSESSMENT = global_state["assessment"][7:]
-    DUMMY_JOBS = request["best_jobs"]
 
-    
+# Update local variables
+MBTI = st.session_state["assessment"][0:7]
+ASSESSMENT = st.session_state["assessment"][7:]
+DUMMY_JOBS = st.session_state["best_jobs"]
+
 
 # Personality Insight Card
 st.markdown(
@@ -297,14 +316,11 @@ for i, job in enumerate(DUMMY_JOBS):
         """, unsafe_allow_html=True)
 
         if st.button("Prepare for this job", key=f"job_btn_{i}"):
-            global_state['prefered_jobs'] = {
+            st.session_state['prefered_jobs'] = {
                 "job_title": job['job_title'],
                 "company_name": job['company_name'],
                 "job_description": job['job_description']
             }
-
-            st.session_state['prefered_jobs'] = global_state['prefered_jobs']
-            save_state()
       
             st.session_state['last_consulted_job_title'] = "" 
             
@@ -318,6 +334,22 @@ for i, job in enumerate(DUMMY_JOBS):
                 </div>
             </details>
         """, unsafe_allow_html=True)
+
+
+
+# Show button to proceed to next step
+st.markdown('<div class="bottom-right-button">', unsafe_allow_html=True)
+if st.button("Proceed", use_container_width=False):
+    st.switch_page("pages/02_JobSearch.py")
+st.markdown("</div>", unsafe_allow_html=True)
+
+
+
+# Show button to proceed to next step
+st.markdown('<div class="bottom-right-button">', unsafe_allow_html=True)
+if st.button("Proceed", use_container_width=False):
+    st.switch_page("pages/02_JobSearch.py")
+st.markdown("</div>", unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
@@ -340,6 +372,3 @@ if __name__ == "__main__":
     # except Exception:
     #     pass
     pass
-    
-
-    # Step 1: Find out where did the user_json was made.

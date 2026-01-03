@@ -2,6 +2,7 @@ import pymupdf
 import os
 import json
 import time
+import base64
 from hashlib import md5
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph
@@ -20,7 +21,7 @@ class State(TypedDict):
     cv_contents: str
     best_jobs: list[dict]
     file_bytes: bytes
-    session_id: int
+    session_id: str
     assessment: str
 
 
@@ -31,8 +32,6 @@ qdrant_key = os.getenv("QDRANT_API_KEY")
 model = ChatOpenAI(model="gpt-4o-mini", temperature=0.3, api_key=os.getenv("OPENAI_API_KEY"))
 client = QdrantClient(url=qdrant_url, api_key=qdrant_key)
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
-
-embeddings = embedding_model
 
 # Create collection if it doesn't exist
 if not client.collection_exists("uploaded_cvs"):
@@ -46,13 +45,13 @@ if not client.collection_exists("uploaded_cvs"):
 CV_VectorStore = QdrantVectorStore(
     client=client,
     collection_name="uploaded_cvs",
-    embedding=embeddings,
+    embedding=embedding_model,
 )
 
 Jobs_VectorStore = QdrantVectorStore(
     client=client,
     collection_name="Jobs_Documents",
-    embedding=embeddings,
+    embedding=embedding_model,
 )
 
 # ================================= Functions =================================
@@ -89,7 +88,8 @@ def analysis_compile(intial_state: State):
 
 
 def read_doc(State: State):
-    byte_file = State["file_bytes"]
+    byte_file = base64.b64decode(State["file_bytes"])
+
     cv_contents = convert_bytes(byte_file)
 
     system_prompt = SystemMessage(
@@ -138,7 +138,8 @@ def construct_vector(State: State):
     # Store CV summary + CV contents as metadata. Embed CV summary for vector points
     _metadata = {
         "cv_contents": State["cv_contents"],
-        "created": int(time.time())
+        "created": int(time.time()),
+        "session_id": State["session_id"]
     }
 
     unique_identifier = State["summary"].lower().encode('utf-8')
@@ -167,6 +168,7 @@ def find_jobs(State: State):
     list_of_jobs = []
 
     for points in qdrant:
+        # print(point[0].payload["metadata"])
         Document = points[0]
         metadata = Document.metadata
         page_content = Document.page_content
@@ -177,7 +179,10 @@ def find_jobs(State: State):
             job_desc = page_content
 
         Job = {
+            'job_title': metadata["job_title"],
+            'company_name': metadata["company_name"],
             'work_type': metadata["work_type"],
+            'work_style': metadata["work_style"],
             'location': metadata["location"],
             'salary': metadata["salary"],
             'company_name': metadata["company_name"],
@@ -219,15 +224,3 @@ def assess_user(State: State):
 
     response = model.invoke([system_prompt]).content.strip('"')
     return {"assessment": response}
-
-
-
-# metadata={
-# 'work_type': 'Full time', 
-# 'location': 'Jakarta Raya', 
-# 'salary': 'Tidak Ditampilkan', 
-# 'company_name': 'PT. PUSAT BANDAR BERDIKARI', 
-# 'job_title': 'STAFF PERSONALIA', 
-# '_id': 'ff91ecd2-765e-b325-6b25-d463e6f1f9a5', 
-# '_collection_name': 'Jobs_Documents'}
-

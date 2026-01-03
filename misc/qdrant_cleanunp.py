@@ -6,6 +6,9 @@ from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from langchain_openai import OpenAIEmbeddings
 from qdrant_client.http import models
+from collections import defaultdict
+import pandas as pd
+import sqlite3
 
 load_dotenv()
 
@@ -33,7 +36,7 @@ client = qdrant.client  # QdrantClient
 # )
 
 
-# From collection, get points where metadata:time_created < time.now() - 30 minutes
+# From collection, get points where metadata.created < time now - 30 minutes
 _filter = models.Filter(
     must=[
         models.FieldCondition(
@@ -73,3 +76,13 @@ points, _ = client.scroll(
 print(points)
 # for point in points:
 #     print(point.payload["metadata"]["created"])
+
+# points, _ = client.scroll (
+#     collection_name="Jobs_Documents",
+#     limit=5,
+#     with_payload=True,
+#     with_vectors=False
+# )
+
+# print(points)
+

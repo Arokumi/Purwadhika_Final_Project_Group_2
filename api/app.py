@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from agents.supervisor_agent import get_supervisor
+from agents.document_agent import analysis_compile
+from agents.search_agent import search_compile
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 import traceback
 from livekit import api as livekit_api
@@ -28,6 +30,35 @@ class ChatRequest(BaseModel):
 class TokenRequest(BaseModel):
     room_name: str
     participant_name: str
+
+
+# For CV Analyzer -----------------------
+class CVRequest(BaseModel):
+    summary: str
+    cv_contents: str
+    best_jobs: list[dict]
+    file_bytes: str
+    session_id: str
+    assessment: str
+
+@app.post("/analyze-cv")
+def cv_analyzer(request: CVRequest):
+    response = analysis_compile(request.model_dump())
+    return response
+
+
+# For Job Searcher -----------------------
+class JobSearchRequest(BaseModel):
+    query: str
+    summary: str
+    best_jobs: list[dict]
+    messages: list
+
+@app.post("/job-search")
+def job_searcher(request: JobSearchRequest):
+    response = search_compile(request.model_dump())
+    return response
+
 
 
 # ================================================= RETRIEVE JOB INFORMATION FROM VECTOR DB / DIRECT ANSWER =========================================
