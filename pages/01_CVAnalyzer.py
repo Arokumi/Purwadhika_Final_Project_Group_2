@@ -232,7 +232,7 @@ st.markdown(
 # Upload CV
 uploaded_file = st.file_uploader(
     "📄 Upload CV…",
-    type=["pdf", "docx"],
+    type=["pdf"],
     label_visibility="collapsed",
 )
 

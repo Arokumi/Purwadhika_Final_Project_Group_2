@@ -154,7 +154,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.switch_page("pages/03_CVAnalyzer.py")
+st.switch_page("pages/01_CVAnalyzer.py")
 # st.markdown(
 #     """
 #     <style>

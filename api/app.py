@@ -1,8 +1,13 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from agents.supervisor_agent import get_supervisor
+from typing import List, Dict, Any
+
+# Agents
+from agents.advisor_agent import invoke_advisor
 from agents.document_agent import analysis_compile
 from agents.search_agent import search_compile
+
+
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 import traceback
 from livekit import api as livekit_api
@@ -21,18 +26,8 @@ conn = sqlite3.connect(db_path, check_same_thread=False)
 conn.row_factory = sqlite3.Row
 cursor = conn.cursor()
 
-supervisor_agent = get_supervisor()
 
-class ChatRequest(BaseModel):
-    query: str
-    thread_id: str = "default"
-
-class TokenRequest(BaseModel):
-    room_name: str
-    participant_name: str
-
-
-# For CV Analyzer -----------------------
+# ==================================== CV ANALYZER AGENT ====================================
 class CVRequest(BaseModel):
     summary: str
     cv_contents: str
@@ -47,7 +42,7 @@ def cv_analyzer(request: CVRequest):
     return response
 
 
-# For Job Searcher -----------------------
+# ==================================== JOB SEARCHER AGENT ====================================
 class JobSearchRequest(BaseModel):
     query: str
     summary: str
@@ -62,29 +57,68 @@ def job_searcher(request: JobSearchRequest):
 
 
 # ==================================== RETRIEVE JOB INFORMATION FROM VECTOR DB / DIRECT ANSWER ====================================
-@app.post("/job-information")
-async def job_information(request: ChatRequest):
-    try :
-        initial_state = {
-            "messages": [HumanMessage(content=request.query)]
-        }
+class ChatRequest(BaseModel):
+    messages: List[Dict[str, Any]]
+    session_id: str
 
-        result = supervisor_agent.invoke(initial_state)
+@app.post("/invoke-advisor")
+def ask_advisor(request: ChatRequest):
+    try:
+        # Parse Pydantic object
+        result = invoke_advisor(
+            messages=request.messages,
+            session_id=request.session_id
+        )
 
+        final_message = result["response"]
+
+        # The result["full_messages"] contains LangChain objects
         steps_log = []
-        final_message=""
+        full_history_objects = result.get("full_messages", [])[:-1]
 
-        for msg in result["messages"]:
+        # print("The following are the returned messages:\n\n")
+        # for i, message in enumerate(reversed(full_history_objects)):
+            # print(f"---- MESSAGE NUMERO {i} ----")
+            # print(message)
+            # print("")
+
+
+        # Iterate using '.type'
+        for msg in reversed(full_history_objects):
+            # CASE A: The AI deciding to call a tool
             if isinstance(msg, AIMessage) and msg.tool_calls:
-                for tool in msg.tool_calls:
-                    steps_log.append(f"Agent calling tool: **{tool['name']}**")
-            elif isinstance(msg, ToolMessage):
-                snippet = msg.content[:100] + "..." if len(msg.content) > 100 else msg.content
-                steps_log.append(f"Tool returned data: {snippet}")
-            elif isinstance(msg, AIMessage) and msg.content:
-                final_message = msg.content
-        
+                tool_calls = getattr(msg, "tool_calls", [])
+                for tool in tool_calls:
+                    steps_log.append({
+                        "type": "tool_call",
+                        "tool": tool['name'],
+                        "message": f"Consulting {tool['name']}..."
+                    })
 
+            # CASE B: The Tool returning data
+            elif isinstance(msg, ToolMessage):
+                content_str = str(msg.content)
+
+                # Create a snippet for readability
+                snippet = content_str[:150] + "..." if len(content_str) > 150 else content_str
+                steps_log.append({
+                    "type": "tool_result",
+                    "tool": msg.name,
+                    "message": f"Received data:\n{snippet}"
+                })
+
+            elif isinstance(msg, HumanMessage):
+                break
+
+        # reverse back the steps
+        steps_log.reverse()
+
+        # print("STEPS_LOGS ARE:")
+        # for message in steps_log:
+        #     print(message)
+
+        print("The following are the tool calls (if any):")
+        print(steps_log if not [] else "No tool calls were used.")
         return {
             "response": final_message,
             "steps": steps_log
@@ -94,7 +128,13 @@ async def job_information(request: ChatRequest):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+
+
 # ======================================================= GET LIVEKIT TOKEN ===================================================
+class TokenRequest(BaseModel):
+    room_name: str
+    participant_name: str
+
 @app.post("/get-livekit-token")
 async def get_livekit_token(req: TokenRequest):
     try:

@@ -35,6 +35,12 @@ client = qdrant.client  # QdrantClient
 #     field_schema=models.PayloadSchemaType.INTEGER
 # )
 
+# client.create_payload_index(
+#     collection_name="uploaded_cvs",
+#     field_name="metadata.session_id",
+#     field_schema=models.PayloadSchemaType.KEYWORD
+# )
+
 
 # From collection, get points where metadata.created < time now - 30 minutes
 _filter = models.Filter(

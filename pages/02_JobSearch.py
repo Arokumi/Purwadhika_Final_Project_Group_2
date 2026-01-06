@@ -11,7 +11,6 @@ import requests
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 from streamlit_extras.stylable_container import stylable_container
 
-temp_jobs = st.session_state["best_jobs"]
 
 # ===================================== Helper Functions =====================================
 def get_session_id():
@@ -221,6 +220,11 @@ Tip: Use the keyword 'new' to find new jobs or specific jobs.
     )
 user_input = st.text_input("Specify your reccommended job list:", value=None ,placeholder="eg. \"Find new jobs that match my CV but are available in Jakarta.\"")
 
+try:
+    temp_jobs = st.session_state["best_jobs"]
+except Exception:
+    st.warning("⚠️ You need to analyze your CV first before having a list of jobs.")
+    st.stop()
 
 # On user input
 if user_input is not None:

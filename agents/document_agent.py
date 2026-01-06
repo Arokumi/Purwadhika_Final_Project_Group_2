@@ -148,7 +148,7 @@ def construct_vector(State: State):
     doc = Document(
         page_content=State["summary"],
         metadata=_metadata,
-        id=unique_id
+        id=unique_id,
     )
 
     qdrant = CV_VectorStore.add_documents([doc])

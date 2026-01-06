@@ -2,7 +2,6 @@ import streamlit as st
 import requests
 import os
 from dotenv import load_dotenv
-from data.global_state import state as global_state
 
 load_dotenv()
 
@@ -14,7 +13,7 @@ st.set_page_config(page_title="AI Mock Interview", layout="centered")
 preference_job = st.session_state.get('prefered_jobs', {})
 
 # ini sebaiknya pake session state
-username = global_state["user_name"]
+username = st.session_state["user_name"]
 
 st.title("🎙️ Interview with Sarah")
 # Global CSS
