@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 LIVEKIT_URL = os.getenv("LIVEKIT_URL") 
 
 st.set_page_config(page_title="AI Mock Interview", layout="centered")
@@ -13,10 +13,10 @@ st.set_page_config(page_title="AI Mock Interview", layout="centered")
 preference_job = st.session_state.get('prefered_jobs', {})
 
 # ini sebaiknya pake session state
-username = st.session_state["user_name"]
+username = st.session_state.get('user_name', "")
 
 st.title("🎙️ Interview with Sarah")
-# Global CSS
+
 st.markdown(
     """
     <style>
@@ -107,7 +107,7 @@ else:
             room_name = f"interview-{username.lower().replace(' ', '-')}"
             payload = {"room_name": room_name, "participant_name": username}
             
-            res = requests.post(f"{API_URL}/get-livekit-token", json=payload)
+            res = requests.post(f"{BACKEND_URL}/get-livekit-token", json=payload)
             
             if res.status_code == 200:
                 st.session_state.token = res.json()["token"]

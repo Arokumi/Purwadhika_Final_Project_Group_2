@@ -1,6 +1,7 @@
 # TEMPORARY FOR TESTING
 import sys
 from pathlib import Path
+import os
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -10,6 +11,9 @@ import streamlit as st
 import requests
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 from streamlit_extras.stylable_container import stylable_container
+from data.database import save_user_data
+
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 
 # ===================================== Helper Functions =====================================
@@ -236,7 +240,7 @@ if user_input is not None:
     }
 
     request = requests.post(
-        "http://localhost:8000/job-search",
+        f"{BACKEND_URL}/job-search",
         json=initial_state
     )
 
@@ -320,11 +324,20 @@ for i, job in enumerate(temp_jobs):
         )
 
         if st.button("Prepare for this job", key=f"job_btn_{i}"):
-            st.session_state['prefered_jobs'] = {
-                "job_title": job['job_title'],
-                "company_name": job['company_name'],
-                "job_description": job['job_description']
+            new_data = {
+                "user_name": st.session_state.get("user_name", "Candidate"),
+                "user_summary": st.session_state.get("user_summary", ""),
+                "prefered_jobs": {
+                    "job_title": job['job_title'],
+                    "company_name": job['company_name'],
+                    "job_description": job['job_description']
+                }
             }
+
+            save_user_data(new_data)
+            
+            st.session_state['prefered_jobs'] = new_data['prefered_jobs']
+            st.success("Data successfully saved to MongoDB")
             st.session_state['last_consulted_job_title'] = ""
             st.switch_page("pages/04_AIConsultant.py")
 

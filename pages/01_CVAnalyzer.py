@@ -13,9 +13,14 @@ import streamlit as st
 import requests
 import base64
 from streamlit.runtime.scriptrunner import get_script_run_ctx
+from data.database import save_user_data
+
+
 
 
 # ======================================================= Internal Variables =======================================================
+
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 DB_FILE = "user_data.json"
 
@@ -259,7 +264,7 @@ if "analysis_done" not in st.session_state:
     }
 
     request = requests.post(
-        "http://localhost:8000/analyze-cv",
+        f"{BACKEND_URL}/analyze-cv",
         json=initial_state
     )
 
@@ -272,6 +277,17 @@ if "analysis_done" not in st.session_state:
     st.session_state["session_id"] = data["session_id"]
     st.session_state["assessment"] = data["assessment"]
     st.session_state["analysis_done"] = True
+
+    mongo_payload = {
+        "user_name": data["user_name"],
+        "user_summary": data["summary"],
+        "assessment": data["assessment"],
+        "session_id": data["session_id"],  
+        "best_jobs": data["best_jobs"]
+    }
+
+    save_user_data(mongo_payload)
+    st.toast("CV Data saved to Cloud Database!", icon="☁️")
 
 
 # Update local variables

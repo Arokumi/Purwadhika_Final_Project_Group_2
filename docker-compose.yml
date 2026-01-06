@@ -39,5 +39,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: agent-voice-worker
-    command: ["python", "agents/interview_agent.py", "dev"]
+    command: ["python", "-m", "agents.interview_agent", "start"]
     env_file: .env
+    environment:
+      - LIVEKIT_URL=${LIVEKIT_URL}

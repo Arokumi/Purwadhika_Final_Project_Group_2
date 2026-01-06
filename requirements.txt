@@ -175,3 +175,9 @@ zstandard==0.25.0
 langgraph-supervisor==0.0.31
 uvicorn==0.38.0
 fastapi==0.124.4
+streamlit-extras==0.7.8
+pymongo[srv]==4.15.5
+dnspython==2.8.0
+PyMuPDF==1.26.7
+torch==2.9.1
+torchaudio==2.9.1

@@ -1,8 +1,9 @@
 # pages/04_AIConsultant.py
 import streamlit as st
 import requests
+import os
 
-
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 # ================================ Helper tool to make code readable ================================
 
 def call_llm(api_url: str):
@@ -274,7 +275,7 @@ if prompt := st.chat_input(placeholder_text, disabled=input_disabled):
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
 
-            API_URL = "http://localhost:8000/invoke-advisor" 
+            API_URL = f"{BACKEND_URL}/invoke-advisor" 
             response = call_llm(API_URL)
 
             if response.status_code == 200:

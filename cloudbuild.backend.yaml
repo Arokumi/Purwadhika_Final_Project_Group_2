@@ -1,0 +1,13 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "asia-southeast2-docker.pkg.dev/purwadhika-483011/career-repo/backend:v1",
+        "-f",
+        "Dockerfile.backend",
+        ".",
+      ]
+images:
+  - "asia-southeast2-docker.pkg.dev/purwadhika-483011/career-repo/backend:v1"

@@ -1,0 +1,7 @@
+final_project/
+env/
+.env
+__pycache__/
+.git/
+.DS_Store
+*.pyc
