@@ -4,10 +4,17 @@ steps:
       [
         "build",
         "-t",
-        "asia-southeast2-docker.pkg.dev/purwadhika-483011/career-repo/backend:v1",
+        "${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO}/${_IMAGE}",
         "-f",
         "Dockerfile.backend",
         ".",
       ]
+      
 images:
-  - "asia-southeast2-docker.pkg.dev/purwadhika-483011/career-repo/backend:v1"
+  - "${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO}/${_IMAGE}"
+
+substitutions:
+  _LOCATION: asia-southeast2
+  _PROJECT_ID: <YOUR_GCP_PROJECT_ID>
+  _REPO: <YOUR_REPOSITORY_NAME>
+  _IMAGE: siapkerja-backend
