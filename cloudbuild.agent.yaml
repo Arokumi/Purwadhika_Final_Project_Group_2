@@ -17,4 +17,4 @@ substitutions:
   _LOCATION: asia-southeast2
   _PROJECT_ID: <YOUR_GCP_PROJECT_ID>
   _REPO: <YOUR_REPOSITORY_NAME>
-  _IMAGE: siapkerja-backend
+  _IMAGE: siapkerja-agent
